@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+  }
+}
+
+@keyframes gradientBg {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.benefit-card {
+  @apply relative p-6 bg-white rounded-xl border border-nexius-gray transition-all duration-300 overflow-hidden;
+  transform-style: preserve-3d;
+}
+
+.benefit-card::before {
+  content: '';
+  @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+  background: linear-gradient(45deg, 
+    rgba(0, 202, 186, 0.1),
+    rgba(29, 42, 77, 0.1),
+    rgba(0, 202, 186, 0.1)
+  );
+  background-size: 200% 200%;
+  animation: gradientBg 15s ease infinite;
+  z-index: 0;
+}
+
+.benefit-card:hover {
+  @apply border-nexius-teal/30 shadow-lg transform -translate-y-1;
+}
+
+.benefit-card:hover::before {
+  @apply opacity-100;
+}
+
+.benefit-card > * {
+  @apply relative z-10;
+}
+
+.benefit-icon {
+  @apply relative h-12 w-12 text-nexius-teal mb-4 transition-transform duration-300;
+}
+
+.benefit-card:hover .benefit-icon {
+  @apply scale-110;
+}
