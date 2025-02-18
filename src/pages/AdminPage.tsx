@@ -7,6 +7,7 @@ import { getImages, deleteImageRecord } from '../lib/images';
 import { deleteImage } from '../lib/storage';
 import { createArticle, getArticles, updateArticle, deleteArticle, publishArticle, unpublishArticle } from '../lib/articles';
 import { getLeads, updateLeadStatus, deleteLead } from '../lib/leads';
+import { getChatSessions, getChatMessages, sendChatMessage, markMessagesAsRead, closeChatSession } from '../lib/chats';
 import {
   Image as ImageIcon,
   FileText,
@@ -31,8 +32,10 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Send,
+  X,
 } from 'lucide-react';
-import type { Image, Article, Lead } from '../types/database';
+import type { Image, Article, Lead, ChatSession, ChatMessage } from '../types/database';
 
 const SECTIONS = [
   { id: 'images', name: 'Images', Icon: ImageIcon, description: 'Upload and manage your website images.' },
@@ -42,35 +45,53 @@ const SECTIONS = [
   { id: 'case-studies', name: 'Case Studies', Icon: BookOpen, description: 'Share your success stories and client results.' },
   { id: 'events', name: 'Events', Icon: Calendar, description: 'Organize and manage your upcoming events.' },
   { id: 'leads', name: 'Leads', Icon: UserCheck, description: 'Manage and track your sales leads.' },
+  { id: 'chat', name: 'Chat', Icon: MessageSquare, description: 'Manage live chat conversations with visitors.' },
 ];
 
-const LEAD_STATUS_COLORS = {
-  new: 'bg-blue-100 text-blue-800',
-  contacted: 'bg-yellow-100 text-yellow-800',
-  qualified: 'bg-green-100 text-green-800',
-  unqualified: 'bg-red-100 text-red-800',
-  converted: 'bg-purple-100 text-purple-800',
-};
+const EmptyState = ({ section, actionButton }: { section: typeof SECTIONS[0], actionButton?: React.ReactNode }) => (
+  <div className="text-center py-16">
+    <div className="relative inline-block mb-6">
+      <div className="absolute -inset-2 bg-nexius-teal/20 rounded-lg blur-lg opacity-50"></div>
+      <section.Icon className="relative h-16 w-16 text-nexius-teal" />
+    </div>
+    <h3 className="text-2xl font-display font-bold text-nexius-navy mb-3">
+      No {section.name} Yet
+    </h3>
+    <p className="text-nexius-charcoal max-w-md mx-auto mb-8">
+      {section.description}
+    </p>
+    {actionButton}
+  </div>
+);
 
-export function AdminPage() {
+export default function AdminPage() {
   const [session, setSession] = useState(null);
   const [activeSection, setActiveSection] = useState('images');
   const [images, setImages] = useState<Image[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatSession, setActiveChatSession] = useState<ChatSession | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isCreatingArticle, setIsCreatingArticle] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+
+  // State for modals
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [showAddCaseStudy, setShowAddCaseStudy] = useState(false);
+  const [showAddEvent, setShowAddEvent] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-        loadImages();
-        loadArticles();
-        loadLeads();
+        loadData();
       }
     });
 
@@ -79,53 +100,50 @@ export function AdminPage() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        loadImages();
-        loadArticles();
-        loadLeads();
+        loadData();
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadImages = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const images = await getImages();
-      setImages(images);
-    } catch (error) {
-      console.error('Error loading images:', error);
+      await Promise.all([
+        loadImages(),
+        loadArticles(),
+        loadLeads(),
+        loadChatSessions(),
+      ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadImages = async () => {
+    const images = await getImages();
+    setImages(images);
   };
 
   const loadArticles = async () => {
-    try {
-      setLoading(true);
-      const articles = await getArticles();
-      setArticles(articles);
-    } catch (error) {
-      console.error('Error loading articles:', error);
-    } finally {
-      setLoading(false);
-    }
+    const articles = await getArticles();
+    setArticles(articles);
   };
 
   const loadLeads = async () => {
-    try {
-      setLoading(true);
-      const leads = await getLeads();
-      setLeads(leads);
-    } catch (error) {
-      console.error('Error loading leads:', error);
-    } finally {
-      setLoading(false);
-    }
+    const leads = await getLeads();
+    setLeads(leads);
   };
 
-  const handleUploadComplete = async (imageUrl: string) => {
-    await loadImages();
+  const loadChatSessions = async () => {
+    const sessions = await getChatSessions();
+    setChatSessions(sessions);
+  };
+
+  const handleImageUpload = (imageUrl: string) => {
+    loadImages();
+    setShowImageUpload(false);
   };
 
   const handleDeleteImage = async (image: Image) => {
@@ -139,6 +157,11 @@ export function AdminPage() {
       console.error('Error deleting image:', error);
       alert('Error deleting image');
     }
+  };
+
+  const handleCreateArticle = () => {
+    setIsCreatingArticle(true);
+    setEditingArticle(null);
   };
 
   const handleSaveArticle = async (articleData: {
@@ -174,79 +197,125 @@ export function AdminPage() {
     }
   };
 
-  const handleEditArticle = (article: Article) => {
-    setEditingArticle(article);
-    setIsCreatingArticle(true);
-  };
+  const renderEmptyState = (section: typeof SECTIONS[0]) => {
+    let actionButton;
 
-  const handleDeleteArticle = async (article: Article) => {
-    if (!confirm('Are you sure you want to delete this article?')) return;
+    switch (section.id) {
+      case 'images':
+        actionButton = (
+          <button
+            onClick={() => setShowImageUpload(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Upload Image
+          </button>
+        );
+        break;
 
-    try {
-      await deleteArticle(article.id);
-      loadArticles();
-    } catch (error) {
-      console.error('Error deleting article:', error);
-      alert('Error deleting article');
+      case 'articles':
+        actionButton = (
+          <button
+            onClick={handleCreateArticle}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Create Article
+          </button>
+        );
+        break;
+
+      case 'store':
+        actionButton = (
+          <button
+            onClick={() => setShowAddProduct(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Product
+          </button>
+        );
+        break;
+
+      case 'courses':
+        actionButton = (
+          <button
+            onClick={() => setShowAddCourse(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Create Course
+          </button>
+        );
+        break;
+
+      case 'case-studies':
+        actionButton = (
+          <button
+            onClick={() => setShowAddCaseStudy(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Case Study
+          </button>
+        );
+        break;
+
+      case 'events':
+        actionButton = (
+          <button
+            onClick={() => setShowAddEvent(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Create Event
+          </button>
+        );
+        break;
+
+      case 'leads':
+        actionButton = (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Leads will appear here when visitors submit the contact form.
+            </p>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+            >
+              View Contact Form
+            </a>
+          </div>
+        );
+        break;
+
+      case 'chat':
+        actionButton = (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Chat sessions will appear here when visitors start conversations.
+            </p>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+            >
+              View Chat Widget
+            </a>
+          </div>
+        );
+        break;
     }
+
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <EmptyState section={section} actionButton={actionButton} />
+      </div>
+    );
   };
-
-  const handleTogglePublish = async (article: Article) => {
-    try {
-      if (article.status === 'published') {
-        await unpublishArticle(article.id);
-      } else {
-        await publishArticle(article.id);
-      }
-      loadArticles();
-    } catch (error) {
-      console.error('Error toggling article publish status:', error);
-      alert('Error updating article status');
-    }
-  };
-
-  const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
-    try {
-      await updateLeadStatus(leadId, newStatus);
-      loadLeads();
-    } catch (error) {
-      console.error('Error updating lead status:', error);
-      alert('Error updating lead status');
-    }
-  };
-
-  const handleDeleteLead = async (leadId: string) => {
-    if (!confirm('Are you sure you want to delete this lead?')) return;
-
-    try {
-      await deleteLead(leadId);
-      loadLeads();
-    } catch (error) {
-      console.error('Error deleting lead:', error);
-      alert('Error deleting lead');
-    }
-  };
-
-  if (!session) {
-    return <Auth />;
-  }
-
-  const renderEmptyState = (section: typeof SECTIONS[0], actionButton?: React.ReactNode) => (
-    <div className="text-center py-12 bg-gray-50 rounded-lg">
-      <section.Icon className="mx-auto h-12 w-12 text-gray-400" />
-      <h3 className="mt-4 text-lg font-medium text-gray-900">
-        {section.name}
-      </h3>
-      <p className="mt-2 text-gray-500">
-        {section.description}
-      </p>
-      {actionButton && (
-        <div className="mt-4">
-          {actionButton}
-        </div>
-      )}
-    </div>
-  );
 
   const renderContent = () => {
     const section = SECTIONS.find((s) => s.id === activeSection);
@@ -255,328 +324,105 @@ export function AdminPage() {
     switch (activeSection) {
       case 'images':
         return (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search images..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nexius-teal focus:border-nexius-teal"
-                />
-              </div>
-              <ImageUpload onUploadComplete={handleUploadComplete} />
-            </div>
-
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nexius-teal mx-auto"></div>
-                <p className="mt-4 text-nexius-charcoal">Loading images...</p>
+          <div>
+            {showImageUpload ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">Upload Image</h2>
+                  <button
+                    onClick={() => setShowImageUpload(false)}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <ImageUpload onUploadComplete={handleImageUpload} />
               </div>
             ) : images.length === 0 ? (
-              renderEmptyState(section, (
-                <ImageUpload onUploadComplete={handleUploadComplete} />
-              ))
+              renderEmptyState(section)
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {images
-                  .filter((image) =>
-                    image.title.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((image) => (
-                    <div
-                      key={image.id}
-                      className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      <div className="aspect-square relative">
+              <div>
+                <div className="mb-6 flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">Images</h2>
+                  <button
+                    onClick={() => setShowImageUpload(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Upload Image
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {images.map((image) => (
+                    <div key={image.id} className="relative group">
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                         <img
                           src={image.url}
                           alt={image.title}
                           className="w-full h-full object-cover"
+                          crossOrigin="anonymous"
                         />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleDeleteImage(image)}
-                            className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </div>
                       </div>
-                      <div className="p-4">
-                        <h3 className="font-medium text-gray-900 truncate">
-                          {image.title}
-                        </h3>
-                        {image.description && (
-                          <p className="mt-1 text-sm text-gray-500 truncate">
-                            {image.description}
-                          </p>
-                        )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                        <button
+                          onClick={() => handleDeleteImage(image)}
+                          className="p-2 bg-white rounded-full text-red-600 hover:text-red-700 hover:bg-white/90 transition-colors"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <div className="mt-2">
+                        <h3 className="text-sm font-medium text-gray-900 truncate">{image.title}</h3>
+                        <p className="text-sm text-gray-500 truncate">{new Date(image.created_at).toLocaleDateString()}</p>
                       </div>
                     </div>
                   ))}
+                </div>
               </div>
             )}
           </div>
         );
 
       case 'articles':
-        if (isCreatingArticle) {
-          return (
-            <ArticleEditor
-              onSave={handleSaveArticle}
-              article={editingArticle}
-              onCancel={() => {
-                setIsCreatingArticle(false);
-                setEditingArticle(null);
-              }}
-            />
-          );
-        }
-
-        return (
-          <div>
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nexius-teal mx-auto"></div>
-                <p className="mt-4 text-nexius-charcoal">Loading articles...</p>
-              </div>
-            ) : articles.length === 0 ? (
-              renderEmptyState(section, (
-                <button
-                  onClick={() => setIsCreatingArticle(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Article
-                </button>
-              ))
-            ) : (
-              <div className="grid gap-6">
-                {articles.map((article) => (
-                  <div
-                    key={article.id}
-                    className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          {article.title}
-                        </h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          article.status === 'published'
-                            ? 'bg-green-100 text-green-800'
-                            : article.status === 'draft'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {article.status.charAt(0).toUpperCase() + article.status.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-4">{article.description}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-500">
-                          {new Date(article.created_at).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleTogglePublish(article)}
-                            className={`px-3 py-1 text-sm font-medium rounded-md ${
-                              article.status === 'published'
-                                ? 'text-yellow-600 hover:text-yellow-700'
-                                : 'text-green-600 hover:text-green-700'
-                            }`}
-                          >
-                            {article.status === 'published' ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleEditArticle(article)}
-                            className="px-3 py-1 text-sm font-medium text-nexius-teal hover:text-nexius-teal/90"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteArticle(article)}
-                            className="px-3 py-1 text-sm font-medium text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
+        return isCreatingArticle ? (
+          <ArticleEditor
+            onSave={handleSaveArticle}
+            article={editingArticle}
+            onCancel={() => {
+              setIsCreatingArticle(false);
+              setEditingArticle(null);
+            }}
+          />
+        ) : articles.length === 0 ? (
+          renderEmptyState(section)
+        ) : null;
 
       case 'store':
-        return renderEmptyState(section, (
-          <button
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </button>
-        ));
+        return renderEmptyState(section);
 
       case 'courses':
-        return renderEmptyState(section, (
-          <button
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Course
-          </button>
-        ));
+        return renderEmptyState(section);
 
       case 'case-studies':
-        return renderEmptyState(section, (
-          <button
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Case Study
-          </button>
-        ));
+        return renderEmptyState(section);
 
       case 'events':
-        return renderEmptyState(section, (
-          <button
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Event
-          </button>
-        ));
+        return renderEmptyState(section);
 
       case 'leads':
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search leads..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nexius-teal focus:border-nexius-teal"
-                />
-              </div>
-            </div>
+        return leads.length === 0 ? renderEmptyState(section) : null;
 
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nexius-teal mx-auto"></div>
-                <p className="mt-4 text-nexius-charcoal">Loading leads...</p>
-              </div>
-            ) : leads.length === 0 ? (
-              renderEmptyState(section)
-            ) : (
-              <div className="grid gap-6">
-                {leads
-                  .filter((lead) =>
-                    `${lead.first_name} ${lead.last_name} ${lead.email}`
-                      .toLowerCase()
-                      .includes(searchQuery.toLowerCase())
-                  )
-                  .map((lead) => (
-                    <div
-                      key={lead.id}
-                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-xl font-semibold text-gray-900">
-                              {lead.first_name} {lead.last_name}
-                            </h3>
-                            <div className="flex items-center gap-4 mt-2 text-gray-600">
-                              <div className="flex items-center gap-2">
-                                <Mail className="h-4 w-4" />
-                                <a href={`mailto:${lead.email}`} className="hover:text-nexius-teal">
-                                  {lead.email}
-                                </a>
-                              </div>
-                              {lead.phone && (
-                                <div className="flex items-center gap-2">
-                                  <Phone className="h-4 w-4" />
-                                  <a href={`tel:${lead.phone}`} className="hover:text-nexius-teal">
-                                    {lead.phone}
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${LEAD_STATUS_COLORS[lead.status] || 'bg-gray-100 text-gray-800'}`}>
-                            {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                          </span>
-                        </div>
-                        
-                        {lead.message && (
-                          <div className="mb-4">
-                            <div className="flex items-center gap-2 text-gray-600 mb-2">
-                              <MessageSquare className="h-4 w-4" />
-                              <span className="font-medium">Message:</span>
-                            </div>
-                            <p className="text-gray-600 pl-6">{lead.message}</p>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Clock className="h-4 w-4" />
-                            {new Date(lead.created_at).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="relative">
-                              <button
-                                onClick={() => {
-                                  const select = document.createElement('select');
-                                  select.innerHTML = `
-                                    <option value="new">New</option>
-                                    <option value="contacted">Contacted</option>
-                                    <option value="qualified">Qualified</option>
-                                    <option value="unqualified">Unqualified</option>
-                                    <option value="converted">Converted</option>
-                                  `;
-                                  select.value = lead.status;
-                                  select.onchange = (e) => handleUpdateLeadStatus(lead.id, (e.target as HTMLSelectElement).value);
-                                  select.click();
-                                }}
-                                className="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700 hover:text-gray-900"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteLead(lead.id)}
-                              className="px-3 py-1 text-sm font-medium text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        );
+      case 'chat':
+        return chatSessions.length === 0 ? renderEmptyState(section) : null;
 
       default:
         return null;
     }
   };
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -644,7 +490,7 @@ export function AdminPage() {
 
       {/* Main Content */}
       <main className="pl-64 pt-16">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg: px-8">
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 sm:px-0">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6">
               {SECTIONS.find((s) => s.id === activeSection)?.name}
@@ -656,3 +502,5 @@ export function AdminPage() {
     </div>
   );
 }
+
+export { AdminPage }

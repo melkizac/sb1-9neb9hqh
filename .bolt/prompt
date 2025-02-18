@@ -6,3 +6,4 @@ Use icons from lucide-react for logos.
 
 Use stock photos from unsplash where appropriate, only valid URLs you know exist. Do not download the images, only link to them in image tags.
 
+Do not modify any existing functions, classes, or logic that is currently working as expected. When adding new features, ensure they integrate with the current codebase without modifying its behavior.

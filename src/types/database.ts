@@ -69,3 +69,24 @@ export interface Lead {
   created_at: string;
   status: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  user_id: string | null;
+  visitor_id: string;
+  content: string;
+  is_from_visitor: boolean;
+  read: boolean;
+  created_at: string;
+}
+
+export interface ChatSession {
+  id: string;
+  visitor_id: string;
+  visitor_name: string | null;
+  visitor_email: string | null;
+  status: 'active' | 'closed';
+  last_message_at: string;
+  created_at: string;
+  updated_at: string;
+}

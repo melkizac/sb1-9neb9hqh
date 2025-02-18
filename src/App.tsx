@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, Routes, Route } from 'react-router-dom';
 import {
   BarChart3,
   Shield,
@@ -17,12 +17,19 @@ import {
   Clock,
   TrendingUp,
   ShoppingCart,
+  FileText,
+  Settings,
+  Database,
+  Lightbulb,
+  MessageCircle,
 } from 'lucide-react';
 import { HeroAnimation } from './components/HeroAnimation';
 import { ContactForm } from './components/ContactForm';
 import { CaseStudy } from './pages/CaseStudy';
+import { CaseStudies } from './pages/CaseStudies';
 import { UploadLogo } from './pages/UploadLogo';
 import { AdminPage } from './pages/AdminPage';
+import { Chat } from './components/Chat';
 
 const features = [
   {
@@ -44,6 +51,45 @@ const features = [
     title: 'AI Training & Workshops',
     description: 'Educating business owners on the power of AI for growth.',
     icon: Shield,
+  },
+];
+
+const useCases = [
+  {
+    title: 'Document Processing',
+    description: 'Automate data extraction from invoices, receipts, and forms with AI-powered OCR.',
+    icon: FileText,
+    metrics: '60% faster processing',
+  },
+  {
+    title: 'Financial Analysis',
+    description: 'AI-driven insights for better financial decision-making and forecasting.',
+    icon: TrendingUp,
+    metrics: '85% accuracy rate',
+  },
+  {
+    title: 'Customer Service',
+    description: 'Intelligent chatbots and automation for 24/7 customer support.',
+    icon: Users,
+    metrics: '3x faster response time',
+  },
+  {
+    title: 'Data Management',
+    description: 'Smart data organization and analysis for better business insights.',
+    icon: Database,
+    metrics: '50% less manual work',
+  },
+  {
+    title: 'Process Automation',
+    description: 'Streamline repetitive tasks with intelligent workflow automation.',
+    icon: Settings,
+    metrics: '40% cost reduction',
+  },
+  {
+    title: 'Innovation Strategy',
+    description: 'AI-powered insights to drive product and service innovation.',
+    icon: Lightbulb,
+    metrics: '2x faster development',
   },
 ];
 
@@ -114,8 +160,42 @@ const testimonials = [
   },
 ];
 
+function Navigation({ onContactClick }: { onContactClick: () => void }) {
+  return (
+    <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <Link 
+            to="/"
+            className="flex items-center focus:outline-none group"
+          >
+            <img
+              src="https://tunidbyclygzipvbfzee.supabase.co/storage/v1/object/public/website-images/m04h4fs8wns-1739784195705.png"
+              alt="NEXIUS Labs"
+              className="h-8 w-8 object-contain group-hover:opacity-90 transition-opacity"
+            />
+            <span className="ml-3 text-xl font-display font-extrabold text-nexius-navy tracking-tight uppercase group-hover:text-nexius-teal transition-colors">NEXIUS Labs</span>
+          </Link>
+          <div className="hidden md:flex items-center space-x-8">
+            <a href="/#services" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Services</a>
+            <a href="/#benefits" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Benefits</a>
+            <Link to="/case-studies" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Case Studies</Link>
+            <a href="/#testimonials" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Testimonials</a>
+            <button 
+              onClick={onContactClick}
+              data-contact="true"
+              className="bg-nexius-teal text-white px-4 py-2 rounded-lg hover:bg-nexius-teal/90 transition-colors font-display font-semibold tracking-wide uppercase text-sm"
+            >
+              Let's Talk
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 function HomePage() {
-  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -125,38 +205,6 @@ function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <ContactForm isOpen={isContactFormOpen} onClose={() => setIsContactFormOpen(false)} />
-      
-      {/* Navigation */}
-      <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <button 
-              onClick={scrollToTop}
-              className="flex items-center focus:outline-none group"
-            >
-              <img
-                src="https://tunidbyclygzipvbfzee.supabase.co/storage/v1/object/public/website-images/m04h4fs8wns-1739784195705.png"
-                alt="NEXIUS Labs"
-                className="h-8 w-8 object-contain group-hover:opacity-90 transition-opacity"
-              />
-              <span className="ml-3 text-xl font-display font-extrabold text-nexius-navy tracking-tight uppercase group-hover:text-nexius-teal transition-colors">NEXIUS Labs</span>
-            </button>
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="#services" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Services</a>
-              <a href="#benefits" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Benefits</a>
-              <a href="#testimonials" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Testimonials</a>
-              <button 
-                onClick={() => setIsContactFormOpen(true)}
-                className="bg-nexius-teal text-white px-4 py-2 rounded-lg hover:bg-nexius-teal/90 transition-colors font-display font-semibold tracking-wide uppercase text-sm"
-              >
-                Let's Talk
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="relative pt-32 pb-24 bg-gradient-to-b from-nexius-navy to-nexius-navy/95">
         <HeroAnimation />
@@ -170,7 +218,12 @@ function HomePage() {
             </p>
             <div className="relative flex justify-center gap-4">
               <button 
-                onClick={() => setIsContactFormOpen(true)}
+                onClick={() => {
+                  const contactButton = document.querySelector('button[data-contact="true"]');
+                  if (contactButton instanceof HTMLButtonElement) {
+                    contactButton.click();
+                  }
+                }}
                 className="bg-nexius-teal text-white px-6 py-3 rounded-lg hover:bg-nexius-teal/90 transition-colors flex items-center group font-display font-semibold tracking-wide uppercase text-sm"
               >
                 Let's Talk <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -240,8 +293,38 @@ function HomePage() {
         </div>
       </section>
 
+      {/* Use Cases Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-display font-bold text-nexius-navy mb-4 tracking-tight">
+              AI SOLUTIONS IN ACTION
+            </h2>
+            <p className="font-body text-nexius-charcoal max-w-2xl mx-auto leading-relaxed">
+              Explore how our AI solutions are transforming different aspects of business operations
+              and delivering measurable results.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {useCases.map((useCase) => (
+              <div key={useCase.title} className="group p-6 bg-white rounded-xl border border-nexius-gray hover:border-nexius-teal/30 hover:shadow-lg transition-all">
+                <div className="relative inline-block">
+                  <div className="absolute -inset-2 bg-nexius-teal/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <useCase.icon className="relative h-12 w-12 text-nexius-teal mb-4" />
+                </div>
+                <h3 className="text-xl font-semibold text-nexius-navy mb-2">{useCase.title}</h3>
+                <p className="text-nexius-charcoal mb-4">{useCase.description}</p>
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-nexius-teal/10 text-nexius-teal">
+                  {useCase.metrics}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-24">
+      <section id="testimonials" className="py-24 bg-nexius-gray">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-display font-bold text-nexius-navy mb-4 tracking-tight">
@@ -330,7 +413,7 @@ function HomePage() {
               <ul className="space-y-2">
                 <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+                <li><Link to="/case-studies" className="hover:text-white transition-colors">Case Studies</Link></li>
               </ul>
             </div>
             <div>
@@ -352,12 +435,22 @@ function HomePage() {
 }
 
 export default function App() {
+  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
+
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/case-study/:id" element={<CaseStudy />} />
-      <Route path="/upload" element={<UploadLogo />} />
-      <Route path="/admin" element={<AdminPage />} />
-    </Routes>
+    <>
+      <Navigation onContactClick={() => setIsContactFormOpen(true)} />
+      <ContactForm isOpen={isContactFormOpen} onClose={() => setIsContactFormOpen(false)} />
+      
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/case-studies" element={<CaseStudies />} />
+        <Route path="/case-study/:id" element={<CaseStudy />} />
+        <Route path="/upload" element={<UploadLogo />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
+
+      <Chat />
+    </>
   );
 }
