@@ -73,6 +73,7 @@ export default function AdminPage() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [activeChatSession, setActiveChatSession] = useState<ChatSession | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [loadingChats, setLoadingChats] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,21 +88,27 @@ export default function AdminPage() {
   const [showAddCaseStudy, setShowAddCaseStudy] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      window.location.href = '/'; // Redirect to home page after logout
+    } catch (error) {
+      console.error('Error signing out:', error);
+      alert('Error signing out. Please try again.');
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) {
-        loadData();
-      }
+      if (session) loadData();
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) {
-        loadData();
-      }
+      if (session) loadData();
     });
 
     return () => subscription.unsubscribe();
@@ -137,8 +144,111 @@ export default function AdminPage() {
   };
 
   const loadChatSessions = async () => {
-    const sessions = await getChatSessions();
-    setChatSessions(sessions);
+    setLoadingChats(true);
+    try {
+      const { data: sessions, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .order('last_message_at', { ascending: false });
+
+
+      if (error) {
+        console.error('Error loading chat sessions:', error);
+        return;
+      }
+
+      setChatSessions(sessions || []);
+
+      // If we have an active session, reload its messages
+      if (activeChatSession) {
+        await loadChatMessages(activeChatSession.id);
+      }
+    } catch (error) {
+      console.error('Error loading chat sessions:', error);
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  const loadChatMessages = async (sessionId: string) => {
+    if (!sessionId) return;
+
+    try {
+      const { data: messages, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading chat messages:', error);
+        return;
+      }
+
+      setChatMessages(messages || []);
+
+      // Mark messages as read
+      if (messages?.length) {
+        await markMessagesAsRead(sessionId);
+      }
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+    }
+  };
+
+  const handleSessionClick = (session: ChatSession) => {
+    setActiveChatSession(session);
+    loadChatMessages(session.id);
+    
+    // Subscribe to new messages for this session
+    const channel = supabase
+      .channel(`chat:${session.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `session_id=eq.${session.id}`,
+      }, (payload) => {
+        setChatMessages(prev => [...prev, payload.new as ChatMessage]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const handleSendAdminMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !activeChatSession) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: message, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: activeChatSession.id,
+          visitor_id: activeChatSession.visitor_id,
+          content: newMessage.trim(),
+          is_from_visitor: false,
+          user_id: user.id,
+          read: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update messages immediately
+      setChatMessages(prev => [...prev, message]);
+
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Error sending message. Please try again.');
+    }
   };
 
   const handleImageUpload = (imageUrl: string) => {
@@ -413,7 +523,105 @@ export default function AdminPage() {
         return leads.length === 0 ? renderEmptyState(section) : null;
 
       case 'chat':
-        return chatSessions.length === 0 ? renderEmptyState(section) : null;
+        return chatSessions.length === 0 ? (
+          renderEmptyState(section)
+        ) : (
+          <div className="grid grid-cols-3 gap-6">
+            {/* Chat Sessions List */}
+            <div className="col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Chat Sessions</h3>
+              </div>
+              <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+                {chatSessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => handleSessionClick(session)}
+                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
+                      activeChatSession?.id === session.id ? 'bg-nexius-teal/10' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900">
+                        {session.visitor_name || 'Anonymous Visitor'}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        session.status === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {session.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {new Date(session.last_message_at).toLocaleString()}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {activeChatSession ? (
+                <>
+                  <div className="p-4 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Chat with {activeChatSession.visitor_name || 'Anonymous Visitor'}
+                    </h3>
+                  </div>
+                  <div className="flex flex-col h-[600px]">
+                    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+                      {chatMessages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${
+                            message.is_from_visitor ? 'justify-start' : 'justify-end'
+                          }`}
+                        >
+                          <div
+                            className={`max-w-[75%] rounded-lg px-4 py-2 ${
+                              message.is_from_visitor
+                                ? 'bg-gray-100 text-gray-900'
+                                : 'bg-nexius-teal text-white'
+                            }`}
+                          >
+                            {message.content}
+                            <div className="text-xs mt-1 opacity-70">
+                              {new Date(message.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <form onSubmit={handleSendAdminMessage} className="p-4 border-t">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Type your message..."
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nexius-teal focus:border-nexius-teal"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newMessage.trim()}
+                          className="px-4 py-2 bg-nexius-teal text-white rounded-lg hover:bg-nexius-teal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Send className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                <div className="p-8 text-center text-gray-500">
+                  Select a chat session to view messages
+                </div>
+              )}
+            </div>
+          </div>
+        );
 
       default:
         return null;
@@ -444,7 +652,7 @@ export default function AdminPage() {
             </div>
             <div className="flex items-center">
               <button
-                onClick={() => supabase.auth.signOut()}
+                onClick={handleLogout}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
               >
                 <LogOut className="h-5 w-5 mr-2" />
@@ -479,10 +687,11 @@ export default function AdminPage() {
           </nav>
           <div className="p-4 border-t border-gray-200">
             <button
+              onClick={handleLogout}
               className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg"
             >
-              <Settings className="h-5 w-5 mr-3" />
-              Settings
+              <LogOut className="h-5 w-5 mr-3" />
+              Logout
             </button>
           </div>
         </div>

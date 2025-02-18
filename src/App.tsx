@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, Routes, Route } from 'react-router-dom';
+import { supabase } from './lib/supabase';
 import {
   BarChart3,
   Shield,
   Workflow,
   ArrowRight,
+  Loader2,
   Brain,
   Zap,
   DollarSign,
@@ -149,7 +151,7 @@ const testimonials = [
     author: "Kate Yap",
     title: "CFO",
     company: "Daisy Accounting",
-    image: "https://tunidbyclygzipvbfzee.supabase.co/storage/v1/object/public/website-images/kate-yap.jpg",
+    image: "https://tunidbyclygzipvbfzee.supabase.co/storage/v1/object/public/website-images/kate-yap.jpeg",
   },
   {
     quote: "NEXIUS Labs' AI solution has transformed how we understand and serve our customers. The results have exceeded our expectations.",
@@ -436,12 +438,30 @@ function HomePage() {
 
 export default function App() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(() => {
+      setAuthChecked(true);
+    }).catch(error => {
+      console.error('Auth check failed:', error);
+      setAuthChecked(true);
+    });
+  }, []);
+
+  if (!authChecked) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 text-nexius-teal animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
       <Navigation onContactClick={() => setIsContactFormOpen(true)} />
       <ContactForm isOpen={isContactFormOpen} onClose={() => setIsContactFormOpen(false)} />
-      
+
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/case-studies" element={<CaseStudies />} />

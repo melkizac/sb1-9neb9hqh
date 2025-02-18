@@ -11,26 +11,21 @@ export function Auth() {
     e.preventDefault();
     try {
       setLoading(true);
-      
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        alert('Check your email for the confirmation link!');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message === 'Invalid login credentials') {
+          alert('Invalid email or password. Please try again.');
+        } else {
+          alert(error.message);
+        }
+        throw error;
       }
     } catch (error: any) {
-      alert(error.message || 'An error occurred during authentication');
       console.error('Auth error:', error);
     } finally {
       setLoading(false);
@@ -42,7 +37,7 @@ export function Auth() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-display font-extrabold text-nexius-navy">
-            {isSignUp ? 'Create an account' : 'Sign in to your account'}
+            Sign in to your account
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleAuth}>
@@ -86,14 +81,7 @@ export function Auth() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
             >
-              {loading ? 'Processing...' : isSignUp ? 'Sign up' : 'Sign in'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-nexius-teal hover:text-nexius-teal/90"
-            >
-              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              {loading ? 'Processing...' : 'Sign in'}
             </button>
           </div>
         </form>

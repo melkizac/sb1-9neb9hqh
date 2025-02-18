@@ -76,10 +76,15 @@ export async function createChatSession(data: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ session }),
+      }).then(async (response) => {
+        if (!response.ok) {
+          const error = await response.json();
+          console.warn('Admin notification not sent:', error);
+        }
       });
     } catch (notifyError) {
-      console.error('Error sending admin notification:', notifyError);
-      // Don't throw here, as the chat session is still created successfully
+      // Silently handle notification errors to not disrupt chat experience
+      console.warn('Could not send admin notification');
     }
 
     return session;

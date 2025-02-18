@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, X, Minimize2, Maximize2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { createChatSession, sendChatMessage } from '../lib/chats';
+import { createChatSession, sendChatMessage, getChatMessages } from '../lib/chats';
 import type { ChatMessage } from '../types/database';
 
 export function Chat() {
@@ -11,37 +11,65 @@ export function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [visitorId, setVisitorId] = useState<string>('');
   const [sessionId, setSessionId] = useState<string>('');
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContentRef = useRef<HTMLDivElement>(null);
+  const messageContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Generate a unique visitor ID if not exists
     const storedVisitorId = localStorage.getItem('visitorId');
-    if (storedVisitorId) {
-      setVisitorId(storedVisitorId);
-    } else {
+    if (!storedVisitorId) {
       const newVisitorId = crypto.randomUUID();
       localStorage.setItem('visitorId', newVisitorId);
       setVisitorId(newVisitorId);
+    } else {
+      setVisitorId(storedVisitorId);
     }
+  }, []);
 
-    // Subscribe to new messages
-    const channel = supabase
-      .channel('chat_messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: `visitor_id=eq.${visitorId}`,
-      }, (payload) => {
-        setMessages(prev => [...prev, payload.new as ChatMessage]);
-      })
-      .subscribe();
+  useEffect(() => {
+    if (sessionId) {
+      // Fetch initial messages
+      const loadInitialMessages = async () => {
+        try {
+          const messages = await getChatMessages(sessionId);
+          setMessages(messages);
+        } catch (error) {
+          console.error('Error fetching messages:', error);
+        }
+      };
+      loadInitialMessages();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [visitorId]);
+      // Set up real-time subscription
+      const channel = supabase
+        .channel(`chat_${sessionId}`)
+        .on(
+          'postgres_changes',
+          { 
+            event: '*',
+            schema: 'public', 
+            table: 'chat_messages', 
+            filter: `session_id=eq.${sessionId}` 
+          }, 
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              setMessages(prev => {
+                // Ensure we don't add duplicate messages
+                if (!prev.some(msg => msg.id === payload.new.id)) {
+                  return [...prev, payload.new as ChatMessage];
+                }
+                return prev;
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     if (isOpen && !sessionId) {
@@ -50,42 +78,60 @@ export function Chat() {
   }, [isOpen, visitorId]);
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
   }, [messages]);
 
   const initializeChat = async () => {
+    setLoading(true);
     try {
       const session = await createChatSession({
         visitor_id: visitorId,
       });
+      
       setSessionId(session.id);
+      
+      // Fetch initial messages
+      const messages = await getChatMessages(session.id);
+      setMessages(messages);
     } catch (error) {
       console.error('Error initializing chat:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !sessionId) return;
 
-    try {
-      await sendChatMessage({
-        session_id: sessionId,
-        visitor_id: visitorId,
-        content: message.trim(),
-        is_from_visitor: true,
-        user_id: null,
-        read: false,
-      });
+    const trimmedMessage = message.trim();
+    setMessage('');
+    
+    const newMessage = {
+      session_id: sessionId,
+      visitor_id: visitorId,
+      content: trimmedMessage,
+      is_from_visitor: true,
+      user_id: null,
+      read: false,
+    };
 
-      setMessage('');
+    try {
+      const sentMessage = await sendChatMessage(newMessage);
+      // Optimistically add the message to the UI
+      setMessages(prev => [...prev, sentMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Error sending message. Please try again.');
+      setMessage(trimmedMessage);
     }
   };
 
@@ -136,7 +182,7 @@ export function Chat() {
             <>
               {/* Messages */}
               <div
-                ref={chatContentRef}
+                ref={messageContainerRef}
                 className="flex-1 p-4 overflow-y-auto space-y-4"
               >
                 {messages.map((msg, index) => (
