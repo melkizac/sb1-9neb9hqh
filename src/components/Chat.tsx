@@ -15,6 +15,31 @@ export function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
+  const loadChatMessages = async (sessionId: string) => {
+    if (!sessionId) return;
+
+    console.log('Loading messages for session:', sessionId);
+    try {
+      const { data: messages, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading chat messages:', error);
+        return;
+      }
+
+      console.log('Loaded messages:', messages);
+      setMessages(messages || []);
+
+      // Mark messages as read
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+    }
+  };
+
   useEffect(() => {
     // Generate a unique visitor ID if not exists
     const storedVisitorId = localStorage.getItem('visitorId');
@@ -30,39 +55,31 @@ export function Chat() {
   useEffect(() => {
     if (sessionId) {
       // Fetch initial messages
-      const loadInitialMessages = async () => {
-        try {
-          const messages = await getChatMessages(sessionId);
-          setMessages(messages);
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-        }
-      };
-      loadInitialMessages();
+      loadChatMessages(sessionId);
 
       // Set up real-time subscription
       const channel = supabase
         .channel(`chat_${sessionId}`)
         .on(
           'postgres_changes',
-          { 
-            event: '*',
+          {
+            event: 'INSERT',
             schema: 'public', 
             table: 'chat_messages', 
             filter: `session_id=eq.${sessionId}` 
-          }, 
+          },
           (payload) => {
-            if (payload.eventType === 'INSERT') {
-              setMessages(prev => {
-                // Ensure we don't add duplicate messages
-                if (!prev.some(msg => msg.id === payload.new.id)) {
-                  return [...prev, payload.new as ChatMessage];
-                }
-                return prev;
-              });
-            }
+            console.log('New message received:', payload);
+            setMessages(prev => {
+              // Ensure we don't add duplicate messages
+              const isDuplicate = prev.some(msg => msg.id === payload.new.id);
+              if (!isDuplicate) {
+                return [...prev, payload.new as ChatMessage];
+              }
+              return prev;
+            });
           }
-        )
+        ) 
         .subscribe();
 
       return () => {
@@ -114,7 +131,7 @@ export function Chat() {
 
     const trimmedMessage = message.trim();
     setMessage('');
-    
+
     const newMessage = {
       session_id: sessionId,
       visitor_id: visitorId,
@@ -127,7 +144,7 @@ export function Chat() {
     try {
       const sentMessage = await sendChatMessage(newMessage);
       // Optimistically add the message to the UI
-      setMessages(prev => [...prev, sentMessage]);
+      // Don't add optimistically since we'll get it from the subscription
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Error sending message. Please try again.');

@@ -139,6 +139,7 @@ export default function AdminPage() {
   };
 
   const loadLeads = async () => {
+    setLoading(true);
     const leads = await getLeads();
     setLeads(leads);
   };
@@ -146,14 +147,14 @@ export default function AdminPage() {
   const loadChatSessions = async () => {
     setLoadingChats(true);
     try {
-      const { data: sessions, error } = await supabase
+      const { data: sessions, error: sessionsError } = await supabase
         .from('chat_sessions')
         .select('*')
         .order('last_message_at', { ascending: false });
 
 
-      if (error) {
-        console.error('Error loading chat sessions:', error);
+      if (sessionsError) {
+        console.error('Error loading chat sessions:', sessionsError);
         return;
       }
 
@@ -163,9 +164,22 @@ export default function AdminPage() {
       if (activeChatSession) {
         await loadChatMessages(activeChatSession.id);
       }
+      const { data: leadsData, error: leadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (leadsError) {
+        console.error('Error loading leads:', leadsError);
+        return;
+      }
+
+      console.log('Loaded leads:', leadsData);
+      setLeads(leadsData || []);
     } catch (error) {
-      console.error('Error loading chat sessions:', error);
+      console.error('Error loading leads:', error);
     } finally {
+      setLoading(false);
       setLoadingChats(false);
     }
   };
@@ -226,33 +240,24 @@ export default function AdminPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // First check if the user is actually an admin
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (adminError || !adminUser) {
-        throw new Error('Not authorized as admin');
-      }
-
-      const messageData = {
-        session_id: activeChatSession.id,
-        visitor_id: activeChatSession.visitor_id,
-        content: newMessage.trim(),
-        is_from_visitor: false,
-        user_id: user.id,
-        read: true
-      };
-
-      const { error } = await supabase
+      const { data: message, error } = await supabase
         .from('chat_messages')
-        .insert(messageData);
+        .insert({
+          session_id: activeChatSession.id,
+          visitor_id: activeChatSession.visitor_id,
+          content: newMessage.trim(),
+          is_from_visitor: false,
+          user_id: user.id,
+          read: true
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Clear the input field after successful send
+      // Update messages immediately
+      setChatMessages(prev => [...prev, message]);
+
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -440,6 +445,14 @@ export default function AdminPage() {
     const section = SECTIONS.find((s) => s.id === activeSection);
     if (!section) return null;
 
+    if (loading && activeSection === 'leads') {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nexius-teal"></div>
+        </div>
+      );
+    }
+
     switch (activeSection) {
       case 'images':
         return (
@@ -529,7 +542,69 @@ export default function AdminPage() {
         return renderEmptyState(section);
 
       case 'leads':
-        return leads.length === 0 ? renderEmptyState(section) : null;
+        return leads.length === 0 ? (
+          renderEmptyState(section)
+        ) : (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Leads</h2>
+            </div>
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {leads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {lead.first_name} {lead.last_name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{lead.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{lead.phone || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          lead.status === 'new' 
+                            ? 'bg-green-100 text-green-800'
+                            : lead.status === 'contacted'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {lead.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(lead.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
 
       case 'chat':
         return chatSessions.length === 0 ? (
@@ -544,7 +619,7 @@ export default function AdminPage() {
               <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
                 {chatSessions.map((session) => (
                   <button
-                    key={session.id}
+                    key={`chat-session-${session.id}`}
                     onClick={() => handleSessionClick(session)}
                     className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
                       activeChatSession?.id === session.id ? 'bg-nexius-teal/10' : ''
@@ -583,7 +658,7 @@ export default function AdminPage() {
                     <div className="flex-1 p-4 space-y-4 overflow-y-auto">
                       {chatMessages.map((message) => (
                         <div
-                          key={message.id}
+                          key={`chat-message-${message.id}`}
                           className={`flex ${
                             message.is_from_visitor ? 'justify-start' : 'justify-end'
                           }`}

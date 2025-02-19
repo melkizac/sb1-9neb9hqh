@@ -8,7 +8,15 @@ import Link from '@tiptap/extension-link';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
+import { FontSize } from '../extensions/FontSize';
+import Highlight from '@tiptap/extension-highlight';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import Youtube from '@tiptap/extension-youtube';
 import { ImageUpload } from './ImageUpload';
+import { TableDialog } from './TableDialog';
 import type { Article } from '../types/database';
 import {
   Bold,
@@ -29,8 +37,45 @@ import {
   Undo,
   Redo,
   Save,
+  Table as TableIcon,
+  Youtube as YoutubeIcon,
+  Highlighter,
+  Type as FontIcon,
+  TextSelect,
   X,
 } from 'lucide-react';
+
+const FONT_FAMILIES = [
+  { label: 'Arial', value: 'Arial' },
+  { label: 'Times New Roman', value: 'Times New Roman' },
+  { label: 'Helvetica', value: 'Helvetica' },
+  { label: 'Georgia', value: 'Georgia' },
+];
+
+const FONT_SIZES = [
+  { label: 'Small', value: '12px' },
+  { label: 'Normal', value: '16px' },
+  { label: 'Large', value: '20px' },
+  { label: 'Huge', value: '24px' },
+];
+
+const COLORS = [
+  '#000000', // Black
+  '#FF0000', // Red
+  '#00FF00', // Green
+  '#0000FF', // Blue
+  '#FFFF00', // Yellow
+  '#FF00FF', // Magenta
+  '#00FFFF', // Cyan
+];
+
+const HIGHLIGHT_COLORS = [
+  '#FFEB3B', // Yellow
+  '#4CAF50', // Green
+  '#2196F3', // Blue
+  '#F44336', // Red
+  '#9C27B0', // Purple
+];
 
 interface ArticleEditorProps {
   onSave: (data: {
@@ -48,6 +93,9 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
   const [description, setDescription] = useState(article?.description || '');
   const [featuredImage, setFeaturedImage] = useState(article?.featured_image || '');
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showYoutubeDialog, setShowYoutubeDialog] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [showTableDialog, setShowTableDialog] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -63,6 +111,22 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
       TextStyle,
       Color,
       FontFamily,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'border-collapse border border-gray-300',
+        },
+      }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      Youtube.configure({
+        HTMLAttributes: {
+          class: 'w-full aspect-video rounded-lg'
+        },
+      }),
     ],
     content: article?.content || '',
   });
@@ -92,6 +156,55 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
     }
 
     editor.chain().focus().setLink({ href: url }).run();
+  };
+
+  const insertYoutubeVideo = () => {
+    if (!editor || !youtubeUrl) return;
+    
+    editor.commands.setYoutubeVideo({
+      src: youtubeUrl,
+      width: 640,
+      height: 480,
+    });
+    
+    setYoutubeUrl('');
+    setShowYoutubeDialog(false);
+  };
+
+  const insertTable = (rows: number, cols: number, withHeader: boolean, borderStyle: string) => {
+    if (!editor) return;
+
+    const borderWidths = {
+      thin: '1px',
+      medium: '2px',
+      thick: '3px'
+    }[borderStyle];
+
+    // Create table with proper attributes
+    editor.chain().focus().insertTable({
+      rows,
+      cols,
+      withHeaderRow: withHeader,
+      HTMLAttributes: {
+        class: 'border-collapse',
+        style: `border: ${borderWidths} solid #e5e7eb;`
+      }
+    }).run();
+
+    // Apply styles to cells
+    const style = `border: ${borderWidths} solid #e5e7eb; padding: 8px;`;
+    
+    // Update all cells with proper styling
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'tableCell' || node.type.name === 'tableHeader') {
+        editor.chain().setNodeSelection(pos).updateAttributes(node.type.name, {
+          style
+        }).run();
+      }
+    });
+
+    // Ensure cursor is inside the first cell
+    editor.chain().focus().run();
   };
 
   const handleFeaturedImageUpload = (imageUrl: string) => {
@@ -178,6 +291,71 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
           {/* Toolbar */}
           <div className="bg-white border-b border-gray-200 p-2 flex flex-wrap gap-1">
             {/* Text Style */}
+            <div className="flex items-center border-r border-gray-200 pr-2 mr-2">
+              <select
+                onChange={(e) => editor?.chain().focus().setFontFamily(e.target.value).run()}
+                className="p-2 rounded hover:bg-gray-100 border border-gray-300"
+              >
+                <option value="">Font Family</option>
+                {FONT_FAMILIES.map((font) => (
+                  <option key={font.value} value={font.value}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                onChange={(e) => editor?.chain().focus().setFontSize(e.target.value).run()}
+                className="ml-2 p-2 rounded hover:bg-gray-100 border border-gray-300"
+                value={editor.getAttributes('textStyle').fontSize || ''}
+              >
+                <option value="">Font Size</option>
+                {FONT_SIZES.map((size) => (
+                  <option key={size.value} value={size.value}>
+                    {size.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Text Color */}
+            <div className="flex items-center border-r border-gray-200 pr-2 mr-2">
+              <div className="relative group">
+                <button className="p-2 rounded hover:bg-gray-100">
+                  <FontIcon className="h-4 w-4" />
+                </button>
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg p-2 hidden group-hover:block shadow-lg">
+                  <div className="grid grid-cols-7 gap-1">
+                    {COLORS.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => editor?.chain().focus().setColor(color).run()}
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="relative group ml-2">
+                <button className="p-2 rounded hover:bg-gray-100">
+                  <Highlighter className="h-4 w-4" />
+                </button>
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg p-2 hidden group-hover:block shadow-lg">
+                  <div className="grid grid-cols-5 gap-1">
+                    {HIGHLIGHT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => editor?.chain().focus().toggleHighlight({ color }).run()}
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Basic Formatting */}
             <div className="flex items-center border-r border-gray-200 pr-2 mr-2">
               <button
                 onClick={() => editor.chain().focus().toggleBold().run()}
@@ -309,6 +487,22 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
               </button>
             </div>
 
+            {/* Tables and Media */}
+            <div className="flex items-center border-r border-gray-200 pr-2 mr-2">
+              <button
+                onClick={() => setShowTableDialog(true)}
+                className="p-2 rounded hover:bg-gray-100"
+              >
+                <TableIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setShowYoutubeDialog(true)}
+                className="p-2 rounded hover:bg-gray-100"
+              >
+                <YoutubeIcon className="h-4 w-4" />
+              </button>
+            </div>
+
             {/* Undo/Redo */}
             <div className="flex items-center">
               <button
@@ -334,6 +528,44 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
           </div>
         </div>
       )}
+      
+      {/* YouTube Dialog */}
+      {showYoutubeDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Insert YouTube Video</h3>
+            <input
+              type="text"
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="Enter YouTube URL"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowYoutubeDialog(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={insertYoutubeVideo}
+                className="px-4 py-2 bg-nexius-teal text-white rounded-lg hover:bg-nexius-teal/90"
+              >
+                Insert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Table Dialog */}
+      {showTableDialog && (
+        <TableDialog
+          onClose={() => setShowTableDialog(false)}
+          onInsert={insertTable}
+        />
+      )}
 
       {/* Save Button */}
       <div className="flex justify-end">
@@ -346,5 +578,4 @@ export function ArticleEditor({ onSave, article, onCancel }: ArticleEditorProps)
         </button>
       </div>
     </div>
-  );
-}
+  );}

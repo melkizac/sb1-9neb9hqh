@@ -3,6 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Add error handling and retry logic
+const handleSupabaseError = (error: any) => {
+  console.error('Supabase operation failed:', error);
+  return null;
+};
+
+const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+    }
+  }
+};
+
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
@@ -46,5 +63,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: customStorage,
     storageKey: 'supabase-auth-token',
     flowType: 'pkce'
+  },
+  global: {
+    fetch: (...args) => {
+      return retryOperation(() => fetch(...args))
+        .catch(handleSupabaseError);
+    }
   }
 });
