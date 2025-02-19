@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef, MouseEvent } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import ReCAPTCHA from 'react-google-recaptcha';
 
 interface ContactFormProps {
   isOpen: boolean;
@@ -17,7 +16,6 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
     message: '',
   });
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
@@ -29,10 +27,6 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
       [e.target.name]: e.target.value
     }));
   };
-
-  const handleCaptchaChange = useCallback((token: string | null) => {
-    setCaptchaToken(token);
-  }, []);
 
   const handleMouseDown = (e: MouseEvent) => {
     if (!formRef.current) return;
@@ -57,11 +51,6 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!captchaToken) {
-      alert('Please complete the reCAPTCHA verification');
-      return;
-    }
-
     try {
       setLoading(true);
 
@@ -75,7 +64,6 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
             email: formData.email,
             phone: formData.phone,
             message: formData.message,
-            captcha_token: captchaToken,
           }
         ]);
 
@@ -90,7 +78,6 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
         phone: '',
         message: '',
       });
-      setCaptchaToken(null);
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('There was an error submitting your request. Please try again.');
@@ -208,16 +195,9 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
               />
             </div>
 
-            <div className="flex justify-center">
-              <ReCAPTCHA
-                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                onChange={handleCaptchaChange}
-              />
-            </div>
-
             <button
               type="submit"
-              disabled={loading || !captchaToken}
+              disabled={loading}
               className="w-full bg-nexius-teal text-white py-3 rounded-lg hover:bg-nexius-teal/90 transition-colors font-display font-semibold tracking-wide uppercase text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Submitting...' : 'Submit'}
