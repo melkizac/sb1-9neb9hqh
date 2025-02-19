@@ -226,24 +226,33 @@ export default function AdminPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: message, error } = await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: activeChatSession.id,
-          visitor_id: activeChatSession.visitor_id,
-          content: newMessage.trim(),
-          is_from_visitor: false,
-          user_id: user.id,
-          read: true
-        })
-        .select()
+      // First check if the user is actually an admin
+      const { data: adminUser, error: adminError } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('user_id', user.id)
         .single();
+
+      if (adminError || !adminUser) {
+        throw new Error('Not authorized as admin');
+      }
+
+      const messageData = {
+        session_id: activeChatSession.id,
+        visitor_id: activeChatSession.visitor_id,
+        content: newMessage.trim(),
+        is_from_visitor: false,
+        user_id: user.id,
+        read: true
+      };
+
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert(messageData);
 
       if (error) throw error;
 
-      // Update messages immediately
-      setChatMessages(prev => [...prev, message]);
-
+      // Clear the input field after successful send
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);

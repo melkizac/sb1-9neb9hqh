@@ -234,13 +234,6 @@ function HomePage() {
                 Watch Demo
               </button>
             </div>
-            <div className="relative mt-16">
-              <img
-                src="/images/hero.png"
-                alt="AI Executive Intelligence"
-                className="rounded-xl shadow-2xl border border-white/10"
-              />
-            </div>
           </div>
         </div>
       </section>
