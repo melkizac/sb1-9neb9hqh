@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, Routes, Route } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import {
+  Menu,
+  X as XIcon,
   BarChart3,
   Shield,
   Workflow,
@@ -163,6 +165,8 @@ const testimonials = [
 ];
 
 function Navigation({ onContactClick }: { onContactClick: () => void }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -178,7 +182,11 @@ function Navigation({ onContactClick }: { onContactClick: () => void }) {
             />
             <span className="ml-3 text-xl font-display font-extrabold text-nexius-navy tracking-tight uppercase group-hover:text-nexius-teal transition-colors">NEXIUS Labs</span>
           </Link>
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Mobile menu button */}
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100">
+            {isMenuOpen ? <XIcon className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+          <div className="hidden md:flex items-center space-x-8 relative">
             <a href="/#services" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Services</a>
             <a href="/#benefits" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Benefits</a>
             <Link to="/case-studies" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Case Studies</Link>
@@ -190,6 +198,24 @@ function Navigation({ onContactClick }: { onContactClick: () => void }) {
             >
               Let's Talk
             </button>
+          </div>
+        </div>
+        {/* Mobile menu */}
+        <div className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
+          <div className="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200">
+            <a href="/#services" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
+              Services
+            </a>
+            <a href="/#benefits" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
+              Benefits
+            </a>
+            <Link to="/case-studies" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
+              Case Studies
+            </Link>
+            <a href="/#testimonials" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
+              Testimonials
+            </a>
+            <button onClick={onContactClick} className="w-full mt-2 px-3 py-2 bg-nexius-teal text-white rounded-lg hover:bg-nexius-teal/90 transition-colors font-display font-semibold tracking-wide uppercase text-sm">Let's Talk</button>
           </div>
         </div>
       </div>

@@ -20,10 +20,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Get admin users
+    // Get admin users with active email notifications
     const { data: adminUsers, error: adminError } = await supabaseClient
       .from('admin_users')
-      .select('email');
+      .select(`
+        email,
+        notification_settings!inner(
+          email_notifications
+        )
+      `)
+      .eq('notification_settings.email_notifications', true);
 
     if (adminError) throw adminError;
 
