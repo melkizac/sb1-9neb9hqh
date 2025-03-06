@@ -4,9 +4,10 @@ const BUCKET_NAME = 'website-images';
 
 export async function uploadImage(file: File) {
   try {
-    // Create a unique file name
-    const fileExt = file.name.split('.').pop();
-    const fileName = `kate-yap.${fileExt}`;  // Fixed name for Kate's photo
+    // Get the file extension
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const timestamp = Date.now();
+    const fileName = `${window.location.pathname.includes('melverick') ? 'melverick' : 'darryl'}-${timestamp}.${fileExt}`;
     const filePath = fileName;
 
     // Upload the file to Supabase storage with specific settings
@@ -15,7 +16,7 @@ export async function uploadImage(file: File) {
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: true, // Overwrite if exists
-        contentType: 'image/jpeg' // Explicitly set content type
+        contentType: file.type // Use the actual file type
       });
 
     if (error) throw error;
@@ -24,12 +25,6 @@ export async function uploadImage(file: File) {
     const { data: { publicUrl } } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(filePath);
-
-    // Verify the URL is accessible
-    const checkResponse = await fetch(publicUrl, { method: 'HEAD' });
-    if (!checkResponse.ok) {
-      throw new Error('Image URL is not accessible');
-    }
 
     return { publicUrl, filePath };
   } catch (error) {

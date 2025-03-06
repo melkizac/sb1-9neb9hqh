@@ -3,14 +3,15 @@ import type { Image } from '../types/database';
 
 export async function createImageRecord(imageData: Omit<Image, 'id' | 'created_at' | 'updated_at'>) {
   try {
-    const { data, error } = await supabase
+    // Create new record
+    const { data: newData, error: insertError } = await supabase
       .from('images')
       .insert(imageData)
       .select()
       .single();
 
-    if (error) throw error;
-    return data;
+    if (insertError) throw insertError;
+    return newData;
   } catch (error) {
     console.error('Error creating image record:', error);
     throw error;

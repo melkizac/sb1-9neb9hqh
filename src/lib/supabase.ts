@@ -1,12 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import { type AuthError } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Add error handling and retry logic
-const handleSupabaseError = (error: any) => {
-  console.error('Supabase operation failed:', error);
-  return null;
+// Improved error handling
+const handleSupabaseError = (error: Error | AuthError) => {
+  // Only log auth errors if they're not related to missing refresh token
+  if (
+    error.name !== 'AuthApiError' || 
+    (error as AuthError).message !== 'Invalid Refresh Token: Refresh Token Not Found'
+  ) {
+    console.error('Supabase operation failed:', error);
+  }
+  throw error;
 };
 
 const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
@@ -14,6 +21,10 @@ const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => 
     try {
       return await operation();
     } catch (error) {
+      // Don't retry auth errors
+      if (error.name === 'AuthApiError') {
+        throw error;
+      }
       if (i === maxRetries - 1) throw error;
       await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
     }
@@ -58,7 +69,7 @@ const customStorage = {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: true,
+    persistSession: false, // Don't persist session to avoid stale token issues
     detectSessionInUrl: true,
     storage: customStorage,
     storageKey: 'supabase-auth-token',
@@ -67,7 +78,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     fetch: (...args) => {
       return retryOperation(() => fetch(...args))
-        .catch(handleSupabaseError);
+        .catch((error) => {
+          handleSupabaseError(error);
+          throw error; // Re-throw to maintain error chain
+        });
     }
   }
 });

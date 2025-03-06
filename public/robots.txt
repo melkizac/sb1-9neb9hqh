@@ -1,0 +1,17 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Block tracking parameters
+Disallow: /*?utm_*
+Disallow: /*?ref=*
+Disallow: /*?fbclid=*
+Disallow: /*?gclid=*
+
+# Block duplicate content paths
+Disallow: /index.html
+Disallow: /index.php
+
+# Allow important files
+Allow: /sitemap.xml
+Allow: /robots.txt

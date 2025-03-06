@@ -61,3 +61,84 @@
 .benefit-card:hover .benefit-icon {
   @apply scale-110;
 }
+
+/* Blog styles */
+.prose {
+  @apply text-nexius-charcoal;
+  max-width: 100%;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  @apply font-display font-bold text-nexius-navy;
+}
+
+.prose a {
+  @apply text-nexius-teal hover:text-nexius-teal/90 no-underline;
+}
+
+.prose img {
+  @apply rounded-lg;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-nexius-teal pl-4 italic;
+}
+
+.prose code {
+  @apply bg-gray-100 px-1 py-0.5 rounded text-nexius-navy;
+}
+
+.prose pre {
+  @apply bg-gray-900 text-white p-4 rounded-lg overflow-x-auto;
+}
+
+.prose pre code {
+  @apply bg-transparent text-inherit p-0;
+}
+
+.prose table {
+  @apply w-full border-collapse;
+}
+
+.prose th,
+.prose td {
+  @apply border border-gray-200 px-4 py-2;
+}
+
+.prose th {
+  @apply bg-gray-50 font-semibold;
+}
+
+.prose thead {
+  @apply bg-gray-50;
+}
+
+.prose tbody tr:hover {
+  @apply bg-gray-50;
+}
+
+.prose ul,
+.prose ol {
+  @apply my-6;
+}
+
+.prose li {
+  @apply my-2;
+}
+
+.prose hr {
+  @apply my-8 border-gray-200;
+}
+
+.prose figure {
+  @apply my-8;
+}
+
+.prose figcaption {
+  @apply text-sm text-gray-500 text-center mt-2;
+}

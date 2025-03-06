@@ -69,6 +69,7 @@ const EmptyState = ({ section, actionButton }: { section: typeof SECTIONS[0], ac
 export default function AdminPage() {
   const [session, setSession] = useState(null);
   const [activeSection, setActiveSection] = useState('images');
+  const [editingImage, setEditingImage] = useState<Image | null>(null);
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [images, setImages] = useState<Image[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -324,6 +325,27 @@ export default function AdminPage() {
     }
   };
 
+  const handleEditImage = async (data: { title: string; description: string }) => {
+    if (!editingImage) return;
+
+    try {
+      await updateImage(editingImage.id, {
+        title: data.title,
+        description: data.description,
+        metadata: editingImage.metadata, // Preserve existing metadata
+        storage_path: editingImage.storage_path, // Preserve storage path
+        url: editingImage.url // Preserve URL
+      });
+      
+      // Refresh the images list and reset editing state
+      setEditingImage(null);
+      await loadImages();
+    } catch (error) {
+      console.error('Error updating image:', error);
+      alert('Error updating image. Please try again.');
+    }
+  };
+
   const renderEmptyState = (section: typeof SECTIONS[0]) => {
     let actionButton;
 
@@ -476,7 +498,7 @@ export default function AdminPage() {
             ) : images.length === 0 ? (
               renderEmptyState(section)
             ) : (
-              <div>
+              <div className="space-y-6">
                 <div className="mb-6 flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Images</h2>
                   <button
@@ -487,6 +509,22 @@ export default function AdminPage() {
                     Upload Image
                   </button>
                 </div>
+                
+                {editingImage && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <ImageUpload
+                      onUploadComplete={() => {}}
+                      editMode={true}
+                      initialData={{
+                        title: editingImage.title,
+                        description: editingImage.description || '',
+                      }}
+                      onSave={handleEditImage}
+                      onCancel={() => setEditingImage(null)}
+                    />
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {images.map((image) => (
                     <div key={image.id} className="relative group">
@@ -498,7 +536,13 @@ export default function AdminPage() {
                           crossOrigin="anonymous"
                         />
                       </div>
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setEditingImage(image)}
+                          className="p-2 bg-white rounded-full text-nexius-teal hover:text-nexius-teal/90 hover:bg-white/90 transition-colors"
+                        >
+                          <Edit2 className="h-5 w-5" />
+                        </button>
                         <button
                           onClick={() => handleDeleteImage(image)}
                           className="p-2 bg-white rounded-full text-red-600 hover:text-red-700 hover:bg-white/90 transition-colors"
@@ -508,7 +552,7 @@ export default function AdminPage() {
                       </div>
                       <div className="mt-2">
                         <h3 className="text-sm font-medium text-gray-900 truncate">{image.title}</h3>
-                        <p className="text-sm text-gray-500 truncate">{new Date(image.created_at).toLocaleDateString()}</p>
+                        <p className="text-sm text-gray-500 truncate">{image.description || 'No description'}</p>
                       </div>
                     </div>
                   ))}

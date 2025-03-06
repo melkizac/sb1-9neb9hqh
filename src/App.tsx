@@ -33,6 +33,10 @@ import { CaseStudy } from './pages/CaseStudy';
 import { CaseStudies } from './pages/CaseStudies';
 import { UploadLogo } from './pages/UploadLogo';
 import { AdminPage } from './pages/AdminPage';
+import { Blog } from './pages/Blog';
+import { BlogPost } from './pages/BlogPost';
+import { LinksPage } from './pages/LinksPage';
+import { NotFound } from './pages/NotFound';
 import { Chat } from './components/Chat';
 
 const features = [
@@ -153,7 +157,7 @@ const testimonials = [
     author: "Kate Yap",
     title: "CFO",
     company: "Daisy Accounting",
-    image: "https://tunidbyclygzipvbfzee.supabase.co/storage/v1/object/public/website-images/kate-yap.jpeg",
+    image: "https://tunidbyclygzipvbfzee.supabase.co/storage/v1/object/public/website-images//kate_yap.jpeg",
   },
   {
     quote: "NEXIUS Labs' AI solution has transformed how we understand and serve our customers. The results have exceeded our expectations.",
@@ -189,6 +193,7 @@ function Navigation({ onContactClick }: { onContactClick: () => void }) {
           <div className="hidden md:flex items-center space-x-8 relative">
             <a href="/#services" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Services</a>
             <a href="/#benefits" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Benefits</a>
+            <Link to="/blog" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Blog</Link>
             <Link to="/case-studies" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Case Studies</Link>
             <a href="/#testimonials" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Testimonials</a>
             <button 
@@ -209,6 +214,9 @@ function Navigation({ onContactClick }: { onContactClick: () => void }) {
             <a href="/#benefits" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
               Benefits
             </a>
+            <Link to="/blog" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
+              Blog
+            </Link>
             <Link to="/case-studies" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
               Case Studies
             </Link>
@@ -239,7 +247,7 @@ function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="relative text-5xl font-display font-extrabold text-white mb-6 tracking-tight">
-              Empower Your Business With<br />AI-Driven Automation
+              AI Automation & Business Process Optimization for Growth
             </h1>
             <p className="relative text-xl font-body text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed">
               At Nexius Labs, we turn AI into a powerful growth engine for businesses—automating operations, streamlining workflows, and maximizing efficiency.
@@ -255,9 +263,6 @@ function HomePage() {
                 className="bg-nexius-teal text-white px-6 py-3 rounded-lg hover:bg-nexius-teal/90 transition-colors flex items-center group font-display font-semibold tracking-wide uppercase text-sm"
               >
                 Let's Talk <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button className="border border-white/20 text-white px-6 py-3 rounded-lg hover:bg-white/10 transition-colors font-display font-semibold tracking-wide uppercase text-sm">
-                Watch Demo
               </button>
             </div>
             <div className="relative mt-16">
@@ -461,10 +466,14 @@ function HomePage() {
     </div>
   );
 }
+import { useLocation } from 'react-router-dom';
 
 export default function App() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const location = useLocation();
+
+  const shouldShowNav = location.pathname !== '/links';
 
   useEffect(() => {
     supabase.auth.getSession().then(() => {
@@ -485,15 +494,19 @@ export default function App() {
 
   return (
     <>
-      <Navigation onContactClick={() => setIsContactFormOpen(true)} />
+      {shouldShowNav && <Navigation onContactClick={() => setIsContactFormOpen(true)} />}
       <ContactForm isOpen={isContactFormOpen} onClose={() => setIsContactFormOpen(false)} />
 
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/case-studies" element={<CaseStudies />} />
         <Route path="/case-study/:id" element={<CaseStudy />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/upload" element={<UploadLogo />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/links" element={<LinksPage />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
 
       <Chat />

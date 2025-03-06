@@ -1,1 +1,15 @@
+# Remove tracking parameters
+/?utm_* /:splat 301
+/?ref=* /:splat 301
+/?fbclid=* /:splat 301
+/?gclid=* /:splat 301
+
+# Redirect index files to root URL
+/index.html / 301
+/index.php / 301
+
+# Redirect www to non-www
+https://www.nexiuslabs.com/* https://nexiuslabs.com/:splat 301!
+
+# Handle client-side routing
 /* /index.html 200
