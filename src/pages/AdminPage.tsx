@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Auth } from '../components/Auth';
+import { EventForm } from '../components/EventForm';
+import { EventsList } from '../components/EventsList';
 import { getImages, deleteImageRecord } from '../lib/images';
 import { deleteImage } from '../lib/storage';
 import { createArticle, getArticles, updateArticle, deleteArticle, publishArticle, unpublishArticle } from '../lib/articles';
@@ -90,7 +92,9 @@ export default function AdminPage() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showAddCaseStudy, setShowAddCaseStudy] = useState(false);
-  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -126,9 +130,24 @@ export default function AdminPage() {
         loadArticles(),
         loadLeads(),
         loadChatSessions(),
+        loadEvents(),
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('start_date', { ascending: true });
+
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (error) {
+      console.error('Error loading events:', error);
     }
   };
 
@@ -413,7 +432,7 @@ export default function AdminPage() {
       case 'events':
         actionButton = (
           <button
-            onClick={() => setShowAddEvent(true)}
+            onClick={() => setIsCreatingEvent(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -473,7 +492,10 @@ export default function AdminPage() {
     if (loading && activeSection === 'leads') {
       return (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nexius-teal"></div>
+          <EventsList 
+            events={events} 
+            onEventClick={(event) => setEditingEvent(event)}
+          />
         </div>
       );
     }
@@ -586,7 +608,45 @@ export default function AdminPage() {
         return renderEmptyState(section);
 
       case 'events':
-        return renderEmptyState(section);
+        return isCreatingEvent ? (
+          <EventForm
+            event={editingEvent}
+            onClose={() => setIsCreatingEvent(false)}
+            onSave={() => {
+              setIsCreatingEvent(false);
+              setEditingEvent(null);
+              loadEvents();
+            }}
+          />
+        ) : editingEvent ? (
+          <EventForm
+            event={editingEvent}
+            onClose={() => setEditingEvent(null)}
+            onSave={() => {
+              setEditingEvent(null);
+              loadEvents();
+            }}
+          />
+        ) : events.length === 0 ? (
+          renderEmptyState(section)
+        ) : (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Events</h2>
+              <button
+                onClick={() => setIsCreatingEvent(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Create Event
+              </button>
+            </div>
+            <EventsList 
+              events={events} 
+              onEventClick={(event) => setEditingEvent(event)}
+            />
+          </div>
+        );
 
       case 'leads':
         return leads.length === 0 ? (

@@ -45,7 +45,7 @@ export interface Event {
   title: string;
   slug: string;
   description: string | null;
-  content: string;
+  content: string | null;
   event_type: 'webinar' | 'workshop' | 'conference' | 'meetup' | 'other';
   start_date: string;
   end_date: string;

@@ -33,9 +33,11 @@ import { CaseStudy } from './pages/CaseStudy';
 import { CaseStudies } from './pages/CaseStudies';
 import { UploadLogo } from './pages/UploadLogo';
 import { AdminPage } from './pages/AdminPage';
+import { EventDetail } from './pages/EventDetail';
 import { Blog } from './pages/Blog';
 import { BlogPost } from './pages/BlogPost';
 import { LinksPage } from './pages/LinksPage';
+import { Events } from './pages/Events';
 import { NotFound } from './pages/NotFound';
 import { Chat } from './components/Chat';
 
@@ -195,6 +197,7 @@ function Navigation({ onContactClick }: { onContactClick: () => void }) {
             <a href="/#benefits" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Benefits</a>
             <Link to="/blog" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Blog</Link>
             <Link to="/case-studies" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Case Studies</Link>
+            <Link to="/events" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Events</Link>
             <a href="/#testimonials" className="font-body font-medium text-nexius-charcoal hover:text-nexius-navy transition-colors">Testimonials</a>
             <button 
               onClick={onContactClick}
@@ -219,6 +222,9 @@ function Navigation({ onContactClick }: { onContactClick: () => void }) {
             </Link>
             <Link to="/case-studies" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
               Case Studies
+            </Link>
+            <Link to="/events" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
+              Events
             </Link>
             <a href="/#testimonials" className="block px-3 py-2 rounded-md text-base font-medium text-nexius-charcoal hover:text-nexius-navy hover:bg-gray-50">
               Testimonials
@@ -505,6 +511,8 @@ export default function App() {
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/upload" element={<UploadLogo />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/event/:slug" element={<EventDetail />} />
+        <Route path="/events" element={<Events />} />
         <Route path="/links" element={<LinksPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

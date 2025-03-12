@@ -139,6 +139,23 @@
   @apply my-8;
 }
 
+/* Toggle Switch Styles */
+.toggle-checkbox:checked {
+  @apply right-0 border-nexius-teal;
+}
+.toggle-checkbox:checked + .toggle-label {
+  @apply bg-nexius-teal;
+}
+.toggle-checkbox {
+  right: 0;
+  z-index: 1;
+  transition: all 0.3s;
+}
+.toggle-label {
+  transition: background-color 0.3s;
+  width: 40px;
+}
+
 .prose figcaption {
   @apply text-sm text-gray-500 text-center mt-2;
 }
