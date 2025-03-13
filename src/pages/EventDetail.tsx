@@ -79,7 +79,7 @@ export function EventDetail() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative bg-nexius-navy py-16">
+      <div className="relative bg-nexius-navy py-16 mb-8">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <Link 
             to="/events" 
@@ -108,9 +108,9 @@ export function EventDetail() {
 
       {/* Event Details */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid lg:grid-cols-3 gap-16">
+        <div className="grid lg:grid-cols-3 gap-8 lg:gap-16 max-w-3xl mx-auto lg:max-w-none">
           {/* Main Content */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-1 lg:order-none">
             {/* Featured Image */}
             {event.featured_image && (
               <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-8 bg-gray-100">
@@ -123,20 +123,13 @@ export function EventDetail() {
             )}
 
             {event.description && (
-              <div className="prose max-w-none mb-12">
-                <p className="text-lg text-nexius-charcoal">{event.description}</p>
-              </div>
+              <div className="prose max-w-none mb-12" dangerouslySetInnerHTML={{ __html: event.description }} />
             )}
             
-            {event.content && (
-              <div className="prose max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: event.content }} />
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 order-2">
             <div className="sticky top-24">
               <div className="bg-nexius-gray rounded-xl p-4 md:p-6 space-y-6">
                 <div>
@@ -149,9 +142,24 @@ export function EventDetail() {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-nexius-navy">Date & Time</div>
                         <div className="text-nexius-charcoal break-words">
-                          {formatDateTime(event.start_date)}
-                          {' - '}
-                          {formatDateTime(event.end_date)}
+                          <div>{(() => {
+                            const date = new Date(event.start_date);
+                            const day = date.getDate();
+                            const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 ? 0 : day % 10)] || 'th';
+                            return `${day}${suffix} ${date.toLocaleDateString('en-US', {
+                              month: 'long',
+                              year: 'numeric'
+                            })} (${date.toLocaleDateString('en-US', { weekday: 'long' })})`;
+                          })()}</div>
+                          <div>{`${new Date(event.start_date).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: 'numeric',
+                            hour12: true
+                          })} - ${new Date(event.end_date).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: 'numeric',
+                            hour12: true
+                          })}`}</div>
                         </div>
                       </div>
                     </div>
@@ -168,7 +176,9 @@ export function EventDetail() {
                       <Users className="h-5 w-5 text-nexius-teal shrink-0 mt-1" />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-nexius-navy">Capacity</div>
-                        <div className="text-nexius-charcoal">Unlimited</div>
+                        <div className="text-nexius-charcoal">
+                          {event.capacity ? `${event.capacity} seats` : 'Unlimited'}
+                        </div>
                       </div>
                     </div>
                   </div>

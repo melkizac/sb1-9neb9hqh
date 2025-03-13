@@ -39,9 +39,9 @@ export function EventsList({ events, onEventClick }: EventsListProps) {
           onClick={() => handleEventClick(event)}
           className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:border-nexius-teal/30 hover:shadow-md transition-all cursor-pointer"
         >
-          <div className="flex items-start gap-4">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
             {/* Event Image */}
-            <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            <div className="w-full sm:w-24 h-48 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
               {event.featured_image ? (
                 <img
                   src={event.featured_image}
@@ -57,7 +57,20 @@ export function EventsList({ events, onEventClick }: EventsListProps) {
 
             {/* Event Details */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-4">
+              <div className="sm:hidden mb-2">
+                <div className="flex items-center">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    event.status === 'published'
+                      ? 'bg-green-100 text-green-800'
+                      : event.status === 'draft'
+                      ? 'bg-gray-100 text-gray-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">{event.title}</h3>
                   <div className="flex items-center text-sm text-gray-500 mb-2">
@@ -65,7 +78,7 @@ export function EventsList({ events, onEventClick }: EventsListProps) {
                     {event.location}
                   </div>
                 </div>
-                <div className="flex items-center">
+                <div className="hidden sm:flex items-center self-center">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     event.status === 'published'
                       ? 'bg-green-100 text-green-800'
@@ -79,7 +92,7 @@ export function EventsList({ events, onEventClick }: EventsListProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                 <div className="text-sm text-gray-500">
                   {formatDateTime(event.start_date)}
                 </div>

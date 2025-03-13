@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Globe, Users, Ticket, Shield, X, Image, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ImageUpload } from './ImageUpload';
+import { RichTextEditor } from './RichTextEditor';
 import type { Event } from '../types/database';
 
 interface EventFormProps {
@@ -232,13 +233,9 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
-          <textarea
-            id="description"
+          <RichTextEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nexius-teal focus:border-nexius-teal"
-            placeholder="Add event description"
+            onChange={setDescription}
           />
         </div>
 
