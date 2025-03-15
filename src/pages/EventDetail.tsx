@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import parse from 'html-react-parser';
 import { supabase } from '../lib/supabase';
 import { Calendar, Clock, MapPin, Users, ArrowLeft } from 'lucide-react';
 import { EventRegistrationForm } from '../components/EventRegistrationForm';
@@ -79,7 +80,7 @@ export function EventDetail() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative bg-nexius-navy py-16 mb-8">
+      <div className="relative bg-nexius-navy py-16">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <Link 
             to="/events" 
@@ -108,90 +109,72 @@ export function EventDetail() {
 
       {/* Event Details */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid lg:grid-cols-3 gap-8 lg:gap-16 max-w-3xl mx-auto lg:max-w-none">
+        <div className="grid lg:grid-cols-3 gap-16">
           {/* Main Content */}
-          <div className="lg:col-span-2 order-1 lg:order-none">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             {/* Featured Image */}
-            {event.featured_image && (
-              <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-8 bg-gray-100">
-                <img
-                  src={event.featured_image}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+            <div className="space-y-8">
+              {event.featured_image && (
+                <div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gray-100">
+                  <img
+                    src={event.featured_image}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
 
-            {event.description && (
-              <div className="prose max-w-none mb-12" dangerouslySetInnerHTML={{ __html: event.description }} />
-            )}
-            
+              {event.description && (
+                <div className="prose max-w-none mb-8">
+                  <p className="text-lg text-nexius-charcoal leading-relaxed">{event.description}</p>
+                </div>
+              )}
+
+              {event.content && (
+                <div className="prose max-w-none">
+                  <div dangerouslySetInnerHTML={{ __html: event.content }} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1 order-2">
-            <div className="sticky top-24">
-              <div className="bg-nexius-gray rounded-xl p-4 md:p-6 space-y-6">
-                <div>
-                  <h3 className="text-lg font-display font-bold text-nexius-navy mb-4">
-                    Event Details
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <Calendar className="h-5 w-5 text-nexius-teal shrink-0 mt-1" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-nexius-navy">Date & Time</div>
-                        <div className="text-nexius-charcoal break-words">
-                          <div>{(() => {
-                            const date = new Date(event.start_date);
-                            const day = date.getDate();
-                            const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 ? 0 : day % 10)] || 'th';
-                            return `${day}${suffix} ${date.toLocaleDateString('en-US', {
-                              month: 'long',
-                              year: 'numeric'
-                            })} (${date.toLocaleDateString('en-US', { weekday: 'long' })})`;
-                          })()}</div>
-                          <div>{`${new Date(event.start_date).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: 'numeric',
-                            hour12: true
-                          })} - ${new Date(event.end_date).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: 'numeric',
-                            hour12: true
-                          })}`}</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-5 w-5 text-nexius-teal shrink-0 mt-1" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-nexius-navy">Location</div>
-                        <div className="text-nexius-charcoal break-words">{event.location}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <Users className="h-5 w-5 text-nexius-teal shrink-0 mt-1" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-nexius-navy">Capacity</div>
-                        <div className="text-nexius-charcoal">
-                          {event.capacity ? `${event.capacity} seats` : 'Unlimited'}
-                        </div>
+          <div className="lg:col-span-1 order-1 lg:order-2">
+            <div className="sticky top-24 bg-nexius-gray rounded-xl p-4 md:p-6 space-y-6">
+              <div>
+                <h3 className="text-lg font-display font-bold text-nexius-navy mb-4">
+                  Event Details
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-5 w-5 text-nexius-teal shrink-0 mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-nexius-navy">Date & Time</div>
+                      <div className="text-nexius-charcoal break-words">
+                        {formatDateTime(event.start_date)}
+                        {' - '}
+                        {formatDateTime(event.end_date)}
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-nexius-teal shrink-0 mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-nexius-navy">Location</div>
+                      <div className="text-nexius-charcoal break-words">{event.location}</div>
+                    </div>
+                  </div>
                 </div>
+              </div>
 
-                <div className="pt-6 border-t border-gray-200">
-                  <button
-                    onClick={() => setShowRegistration(true)}
-                    className="block w-full bg-nexius-teal text-white text-center px-6 py-3 rounded-lg hover:bg-nexius-teal/90 transition-colors font-display font-semibold tracking-wide uppercase text-sm"
-                  >
-                    Register Now
-                  </button>
-                </div>
+              <div className="pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowRegistration(true)}
+                  className="block w-full bg-nexius-teal text-white text-center px-6 py-3 rounded-lg hover:bg-nexius-teal/90 transition-colors font-display font-semibold tracking-wide uppercase text-sm"
+                >
+                  Register Now
+                </button>
               </div>
             </div>
           </div>

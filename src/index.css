@@ -7,47 +7,92 @@
     font-family: 'Inter', sans-serif;
   }
   
+  /* Prose Styles */
+  .prose {
+    @apply text-nexius-charcoal;
+    max-width: 100%;
+  }
+
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    @apply font-display font-bold text-nexius-navy;
+    margin-top: 2em;
+    margin-bottom: 1em;
+  }
+
+  .prose h1 {
+    @apply text-4xl;
+  }
+
+  .prose h2 {
+    @apply text-3xl;
+  }
+
+  .prose h3 {
+    @apply text-2xl;
+  }
+
+  .prose p {
+    @apply mb-6 leading-relaxed;
+  }
+
+  .prose ul,
+  .prose ol {
+    @apply my-6 ml-6;
+  }
+
+  .prose li {
+    @apply mb-2;
+  }
+
+  .prose hr {
+    @apply my-8 border-t-2 border-gray-200;
+  }
+
+  .prose blockquote {
+    @apply pl-4 border-l-4 border-nexius-teal italic my-6;
+  }
+
+  .prose code {
+    @apply bg-gray-100 px-1 py-0.5 rounded text-nexius-navy;
+  }
+
+  .prose pre {
+    @apply bg-gray-900 text-white p-4 rounded-lg overflow-x-auto my-6;
+  }
+
+  .prose pre code {
+    @apply bg-transparent text-inherit p-0;
+  }
+
+  .prose img {
+    @apply rounded-lg my-6;
+  }
+
+  .prose a {
+    @apply text-nexius-teal hover:text-nexius-teal/90 no-underline;
+  }
+
+  .prose table {
+    @apply w-full border-collapse my-6;
+  }
+
+  .prose th,
+  .prose td {
+    @apply border border-gray-200 px-4 py-2;
+  }
+
+  .prose th {
+    @apply bg-gray-50 font-semibold;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Montserrat', sans-serif;
   }
-}
-
-/* Rich Text Editor Styles */
-.ProseMirror {
-  @apply outline-none;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  @apply text-gray-400 float-left h-0 pointer-events-none;
-}
-
-.ProseMirror h1 {
-  @apply text-2xl font-bold mb-4;
-}
-
-.ProseMirror h2 {
-  @apply text-xl font-bold mb-3;
-}
-
-.ProseMirror h3 {
-  @apply text-lg font-bold mb-2;
-}
-
-.ProseMirror ul {
-  @apply list-disc pl-6 mb-4;
-}
-
-.ProseMirror ol {
-  @apply list-decimal pl-6 mb-4;
-}
-
-.ProseMirror blockquote {
-  @apply border-l-4 border-gray-300 pl-4 italic my-4;
-}
-
-.ProseMirror a {
-  @apply text-nexius-teal hover:text-nexius-teal/90 underline;
 }
 
 @keyframes gradientBg {

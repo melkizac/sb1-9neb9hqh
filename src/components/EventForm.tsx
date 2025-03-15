@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Globe, Users, Ticket, Shield, X, Image, Eye, EyeOff } from 'lucide-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { Image as ImageExtension } from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import FontFamily from '@tiptap/extension-font-family';
 import { supabase } from '../lib/supabase';
 import { ImageUpload } from './ImageUpload';
-import { RichTextEditor } from './RichTextEditor';
 import type { Event } from '../types/database';
 
 interface EventFormProps {
@@ -18,13 +26,58 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
   const [endDate, setEndDate] = useState(event ? new Date(event.end_date).toISOString().split('T')[0] : '');
   const [endTime, setEndTime] = useState(event ? new Date(event.end_date).toTimeString().slice(0,5) : '');
   const [location, setLocation] = useState(event?.location || '');
+  const descriptionEditor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      ImageExtension,
+      Link.configure({
+        openOnClick: false,
+      }),
+      TextStyle,
+      Color,
+      FontFamily,
+    ],
+    content: event?.description || '',
+    onUpdate: ({ editor }) => {
+      // Store HTML content when editor updates
+      const html = editor.getHTML();
+      setDescription(html);
+    },
+  });
   const [description, setDescription] = useState(event?.description || '');
+  const [content, setContent] = useState(event?.content || '');
   const [eventType, setEventType] = useState(event?.event_type || 'webinar');
   const [featuredImage, setFeaturedImage] = useState<string>(event?.featured_image || '');
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [capacity, setCapacity] = useState<number | null>(null);
+  const [capacity, setCapacity] = useState<number | null>(event?.capacity || null);
   const [status, setStatus] = useState(event?.status || 'draft');
   const [loading, setLoading] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState<number | null>(event?.ticket_price || null);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      ImageExtension,
+      Link.configure({
+        openOnClick: false,
+      }),
+      TextStyle,
+      Color,
+      FontFamily,
+    ],
+    content: content,
+    onUpdate: ({ editor }) => {
+      setContent(editor.getHTML());
+    },
+  });
 
   const handleImageUpload = (imageUrl: string) => {
     setFeaturedImage(imageUrl);
@@ -46,13 +99,14 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
         title,
         description,
         event_type: eventType,
-        content: description,
+        content,
         start_date: startDateTime.toISOString(),
         end_date: endDateTime.toISOString(),
         location,
         featured_image: featuredImage,
         status,
         capacity: capacity,
+        ticket_price: ticketPrice,
         published_at: status === 'published' ? new Date().toISOString() : null,
         organizer_id: user.id,
       };
@@ -231,12 +285,112 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
         {/* Description */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            Description
+            Description (Rich Text)
           </label>
-          <RichTextEditor
-            value={description}
-            onChange={setDescription}
-          />
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-white border-b border-gray-200 p-2 flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleBold().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  descriptionEditor?.isActive('bold') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Bold
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleItalic().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  descriptionEditor?.isActive('italic') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Italic
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleUnderline().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  descriptionEditor?.isActive('underline') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Underline
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleBulletList().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  descriptionEditor?.isActive('bulletList') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Bullet List
+              </button>
+            </div>
+            <EditorContent 
+              editor={descriptionEditor} 
+              className="prose max-w-none p-4 min-h-[120px] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Content */}
+        <div>
+          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+            Content (Rich Text)
+          </label>
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-white border-b border-gray-200 p-2 flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => editor?.chain().focus().toggleBold().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  editor?.isActive('bold') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Bold
+              </button>
+              <button
+                type="button"
+                onClick={() => editor?.chain().focus().toggleItalic().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  editor?.isActive('italic') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Italic
+              </button>
+              <button
+                type="button"
+                onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  editor?.isActive('underline') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Underline
+              </button>
+              <button
+                type="button"
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  editor?.isActive('heading', { level: 2 }) ? 'bg-gray-100' : ''
+                }`}
+              >
+                H2
+              </button>
+              <button
+                type="button"
+                onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                className={`p-2 rounded hover:bg-gray-100 ${
+                  editor?.isActive('bulletList') ? 'bg-gray-100' : ''
+                }`}
+              >
+                Bullet List
+              </button>
+            </div>
+            <EditorContent 
+              editor={editor} 
+              className="prose max-w-none p-4 min-h-[200px] focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* Event Options */}
@@ -267,14 +421,6 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
 
           <div className="flex items-center justify-between py-3 border-b border-gray-200">
             <div className="flex items-center">
-              <Ticket className="h-5 w-5 text-gray-400 mr-2" />
-              <span className="text-gray-700">Tickets</span>
-            </div>
-            <span className="text-gray-500">Free</span>
-          </div>
-
-          <div className="flex items-center justify-between py-3 border-b border-gray-200">
-            <div className="flex items-center">
               <Shield className="h-5 w-5 text-gray-400 mr-2" />
               <span className="text-gray-700">Require Approval</span>
             </div>
@@ -295,7 +441,7 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
           <div className="flex items-center justify-between py-3 border-b border-gray-200">
             <div className="flex items-center">
               <Users className="h-5 w-5 text-gray-400 mr-2" />
-              <span className="text-gray-700">Capacity</span>
+              <span className="text-gray-700">Event Capacity</span>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -307,6 +453,25 @@ export function EventForm({ onClose, onSave, event }: EventFormProps) {
                 className="w-24 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nexius-teal focus:border-nexius-teal text-right"
               />
               <span className="text-gray-500 text-sm">seats</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between py-3 border-b border-gray-200">
+            <div className="flex items-center">
+              <Ticket className="h-5 w-5 text-gray-400 mr-2" />
+              <span className="text-gray-700">Ticket Price</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={ticketPrice === null ? '' : ticketPrice}
+                onChange={(e) => setTicketPrice(e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="Free"
+                className="w-24 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nexius-teal focus:border-nexius-teal text-right"
+              />
             </div>
           </div>
         </div>
