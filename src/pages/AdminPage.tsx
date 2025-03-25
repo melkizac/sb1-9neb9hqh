@@ -596,7 +596,99 @@ export default function AdminPage() {
           />
         ) : articles.length === 0 ? (
           renderEmptyState(section)
-        ) : null;
+        ) : (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Articles</h2>
+              <button
+                onClick={handleCreateArticle}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nexius-teal hover:bg-nexius-teal/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nexius-teal"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Create Article
+              </button>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {articles.map((article) => (
+                <div key={article.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:border-nexius-teal/30 hover:shadow-lg transition-all">
+                  {article.featured_image && (
+                    <div className="aspect-video relative overflow-hidden rounded-t-lg">
+                      <img
+                        src={article.featured_image}
+                        alt={article.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        article.status === 'published'
+                          ? 'bg-green-100 text-green-800'
+                          : article.status === 'draft'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {article.status.charAt(0).toUpperCase() + article.status.slice(1)}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingArticle(article);
+                            setIsCreatingArticle(true);
+                          }}
+                          className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this article?')) {
+                              await deleteArticle(article.id);
+                              loadArticles();
+                            }
+                          }}
+                          className="p-2 rounded-full text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{article.title}</h3>
+                    {article.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{article.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                      {article.status === 'draft' ? (
+                        <button
+                          onClick={async () => {
+                            await publishArticle(article.id);
+                            loadArticles();
+                          }}
+                          className="text-nexius-teal hover:text-nexius-teal/90 font-medium"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            await unpublishArticle(article.id);
+                            loadArticles();
+                          }}
+                          className="text-gray-500 hover:text-gray-700 font-medium"
+                        >
+                          <EyeOff className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
 
       case 'store':
         return renderEmptyState(section);
@@ -1022,4 +1114,4 @@ export default function AdminPage() {
   );
 }
 
-export { AdminPage }
+export { AdminPage };
